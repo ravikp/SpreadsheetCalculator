@@ -1,4 +1,4 @@
-name := "spreadsheetcalculator"
+name := "Spreadsheet"
 
 version := "1.0"
 
