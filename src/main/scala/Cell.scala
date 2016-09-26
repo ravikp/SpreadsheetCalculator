@@ -4,20 +4,32 @@
  */
 case class Cell(name: String, formulae: String) {
 
-  lazy val neighbours: List[(Int, Int)] = {
+  lazy val predecessors: List[(Int, Int)] = {
     val pattern = "([A-Z][1-9]+)".r
     pattern.findAllIn(formulae).matchData.map(x => x.group(1)).map(toRowColumnPair).toList
   }
 
   lazy val (row, col) = toRowColumnPair(name)
 
-  def evaluateValue(implicit model: Array[Array[Cell]]): Double = {
+  /**
+   * Cell requires external model for evaluating its ancestors.
+   * Cell can handle negative numbers in formulae. Formulae is
+   * provided in RPN notation. Once evaluated its value cannot
+   * be changed. It is further optimized by caching its computed
+   * result.
+   *
+   * Supported operators are +, -, /, *, ++, --
+   *
+   * @param model
+   * @return
+   */
+  def evaluate(implicit model: Array[Array[Cell]]): Double = {
     if (_value.isDefined) _value.get
-    _value = Some(evaluate)
+    _value = Some(evaluateValue)
     _value.get
   }
 
-  private def evaluate(implicit model: Array[Array[Cell]]): Double = {
+  private def evaluateValue(implicit model: Array[Array[Cell]]): Double = {
 
     val tokens = formulae.split(" ")
     import scala.collection.mutable.Stack
@@ -48,7 +60,7 @@ case class Cell(name: String, formulae: String) {
         }
       } else if (isCell(token)) {
           val (drow, dcol) = toRowColumnPair(token)
-          stack.push(model(drow)(dcol).evaluate)
+          stack.push(model(drow)(dcol).evaluateValue)
       }
       else
         stack.push(token.toDouble)
@@ -79,5 +91,4 @@ case class Cell(name: String, formulae: String) {
   }
 
   private var _value: Option[Double] = None
-
 }
