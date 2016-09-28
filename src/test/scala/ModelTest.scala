@@ -3,7 +3,7 @@
  * All commercial use requires permission from the author (Ravi Kumar Pasumarthy: ravi.pasumarthy@gmail.com)
  */
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 
 class ModelTest extends FlatSpec with Matchers {
   "Model" should "order the cells according to dependencies" in {
@@ -18,7 +18,27 @@ class ModelTest extends FlatSpec with Matchers {
         Cell("B3", "B1 B2"))
     )
     )
-    model.sortCells.map(x => x.name) should be(List("A2", "A1", "A3", "B2", "B1", "B3"))
+    model.sortCells.map(x => x.name) should be(Array("A2", "B2", "A1", "A3", "B1", "B3"))
+  }
+
+  "Simple Model" should "order the cells according to dependencies" in {
+    val model = Model(1, 3, Array(
+      Array(
+        Cell("A1", "A2"),
+        Cell("A2", "5"),
+        Cell("A3", "A1"))
+    ))
+    model.sortCells.map(x => x.name) should be(Array("A2", "A1", "A3"))
+  }
+
+  it should "build neighbours" in {
+    val cell1 = Cell("A1", "A2")
+    val cell2 = Cell("A2", "5")
+    val cell3 = Cell("A3", "A2 A1 +")
+    val model = Model(1, 3, Array(Array(cell1, cell2, cell3)))
+    cell1.neighbours should be(List(cell3))
+    cell2.neighbours should be(List(cell1, cell3))
+    cell3.neighbours should be(List())
   }
 
   it should "evaluate cells according to sort order" in {
@@ -114,5 +134,17 @@ class ModelTest extends FlatSpec with Matchers {
       "5.00000", "35.00000", "-5.00000", "2.00000", "6.00000",
       "6.00000", "-35.00000", "-34.00000", "-69.00000", "-210.00000"
     ))
+  }
+
+  "Extremely large model" should "not throw stackoverflow for 100 thousand columns" in {
+    val limit = 10000
+    val cells = (1 until limit).foldRight(List(Cell(s"A$limit", "1")))((x, acc) => {
+      Cell(s"A$x", s"A${x + 1}") :: acc
+    }
+    ).toArray
+
+    val model = Model(1, limit, Array(cells))
+    val results = model.evaluate
+    results(0) should be("1.00000")
   }
 }

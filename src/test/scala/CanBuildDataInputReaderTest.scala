@@ -13,11 +13,11 @@ class CanBuildDataInputReaderTest extends FlatSpec with Matchers {
     readModel.cells should be(Array(Array(cell1)))
   }
 
-  "CanBuildDataInputReader" should "create model with a single row" in new CanBuildDataInputReader {
-    val lines = List("1 2", "A2", "5")
+  it should "create model with a single row" in new CanBuildDataInputReader {
+    val lines = List("2 1", "A2", "5")
     val cell1 = Cell("A1", "A2")
-    val cell2 = Cell("B1", "5")
+    val cell2 = Cell("A2", "5")
 
-    readModel.cells should be(Array(Array(cell1), Array(cell2)))
+    readModel.cells should be(Array(Array(cell1, cell2)))
   }
 }

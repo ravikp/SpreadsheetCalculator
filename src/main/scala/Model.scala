@@ -3,13 +3,25 @@
  * All commercial use requires permission from the author (Ravi Kumar Pasumarthy: ravi.pasumarthy@gmail.com)
  */
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable._
 
 case class Model(rows: Int, columns: Int, cells: Array[Array[Cell]]) {
 
-  private val NOT_VISITED = 0
-  private val BEING_VISITED = 1
-  private val DONE_VISITED = 2
+  lazy val flattenedCells = cells.flatten
+
+  /**
+   * This helps me to navigate via adjacency matrix
+   */
+  def buildNeighbours = {
+    for (cell <- flattenedCells) {
+      val dependencies = cell.predecessors
+      for ((row, col) <- dependencies) {
+        cells(row)(col).addNeighbour(cell)
+      }
+    }
+  }
+
+  buildNeighbours
 
   /**
    * Evaluation of the spreadsheet is done by initially
@@ -18,59 +30,61 @@ case class Model(rows: Int, columns: Int, cells: Array[Array[Cell]]) {
    * and evaluating their individual formulae. Evaluation
    * can detect cycles in input. When a cycle is detected
    * the Model raises the RuntimetimeException. 
-   * 
+   *
    * @return
    */
   def evaluate: Array[String] = {
     implicit val modelCells = cells
-    for (cell <- sortCells) {
-      cell.evaluate
-    }
-
-    (for {
-      row <- cells
-      cell <- row
-    } yield cell.evaluate.formatted("%.5f"))
-
+    val result = Array.ofDim[String](rows * columns)
+    sortCells.foreach(cell => {
+      result(cell.row * columns + cell.col) = cell.evaluate.formatted("%.5f")
+    })
+    result
   }
 
-  def sortCells: List[Cell] = sortCellsTopologically
-
   /**
-   * To evaluate the start position for all the cells,
-   * initially the cells are sorted using topological
-   * sort. After the sort the edges are arranged in
-   * such a way that result[i-1] can be independently
-   * evaluated without any references to result[i]
+   *
+   * This topological sorting is based on Kahn's algorithm.
+   * Kahn's algorithm doesn't depend on recursion. It depends
+   * on maintaining two containers (one queue and another one
+   * for the output)
    *
    * @return
    */
-  private def sortCellsTopologically: List[Cell] = {
+  def sortCells: Array[Cell] = {
 
-    val out = ListBuffer[Cell]()
-    val visitedVertices = Array.ofDim[Int](rows, columns)
-    val sortedByEvaluation = new ListBuffer[Cell]()
+    val indegree = Array.tabulate(rows, columns)((row, col) => cells(row)(col).indegree)
 
-    def visitVertex(vertex: Cell): Unit = {
-      if(visitedVertices(vertex.row)(vertex.col) == BEING_VISITED)
-        throw new RuntimeException("Cycle detected")
+    var nodeVisitCount: Int = 0
 
-      if(visitedVertices(vertex.row)(vertex.col) == DONE_VISITED)
-        return;
+    val cellsWithNoInbounds = flattenedCells.filter(_.indegree == 0)
+    val queue = cellsWithNoInbounds.foldLeft(new Queue[Cell]())((q, cell) => {
+      q.enqueue(cell);
+      q
+    })
 
-      visitedVertices(vertex.row)(vertex.col) = BEING_VISITED
-      for ((predecessorRow, predecessorCol) <- vertex.predecessors) {
-          val cellToVisit: Cell = cells(predecessorRow)(predecessorCol)
-          visitVertex(cellToVisit)
-      }
-      visitedVertices(vertex.row)(vertex.col) = DONE_VISITED
-      sortedByEvaluation.+=(vertex)
+    val result = ListBuffer[Cell]()
+
+    var count = 0
+    while (queue.nonEmpty) {
+      val item = queue.dequeue
+
+      result += item
+
+      item.neighbours.foreach(cell => {
+        indegree(cell.row)(cell.col) -= 1
+        val result = indegree(cell.row)(cell.col)
+        if (result == 0) {
+          queue.enqueue(cell)
+        }
+      })
+
+      count += 1
     }
 
-    for (vertex <- cells.flatten) {
-      if (visitedVertices(vertex.row)(vertex.col) == NOT_VISITED) visitVertex(vertex)
-    }
+    if (count != (rows * columns))
+      throw new RuntimeException("Cycle detected")
 
-    sortedByEvaluation.toList
+    result.toArray
   }
 }

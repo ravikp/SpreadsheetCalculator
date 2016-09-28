@@ -49,4 +49,14 @@ class CellTest extends FlatSpec with Matchers {
     implicit val model: Array[Array[Cell]] = Array(Array(cell))
     cell.evaluate should be(-2147483649d)
   }
+
+  it should "calculate indegree for cell with no dependencies as zero" in {
+    val cell = Cell("A10", "10")
+    cell.indegree should be(0)
+  }
+
+  it should "calculate predecessors for cell with one dependency" in {
+    val cell = Cell("A9", "A10")
+    cell.predecessors should be(List((0, 9)))
+  }
 }

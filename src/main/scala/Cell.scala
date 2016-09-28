@@ -2,14 +2,19 @@
  * Copyright (c) September 26, 2016. This code intended for discussion purpose.
  * All commercial use requires permission from the author (Ravi Kumar Pasumarthy: ravi.pasumarthy@gmail.com)
  */
+
 case class Cell(name: String, formulae: String) {
 
   lazy val predecessors: List[(Int, Int)] = {
-    val pattern = "([A-Z][1-9]+)".r
+    val pattern = "([A-Z][0-9]+)".r
     pattern.findAllIn(formulae).matchData.map(x => x.group(1)).map(toRowColumnPair).toList
   }
 
   lazy val (row, col) = toRowColumnPair(name)
+
+  lazy val indegree: Int = {
+    predecessors.size
+  }
 
   /**
    * Cell requires external model for evaluating its ancestors.
@@ -24,9 +29,14 @@ case class Cell(name: String, formulae: String) {
    * @return
    */
   def evaluate(implicit model: Array[Array[Cell]]): Double = {
-    if (_value.isDefined) _value.get
-    _value = Some(evaluateValue)
-    _value.get
+    _value match {
+      case Some(value) => value
+      case None => {
+        val result = evaluateValue
+        _value = Some(result)
+        result
+      }
+    }
   }
 
   private def evaluateValue(implicit model: Array[Array[Cell]]): Double = {
@@ -60,7 +70,7 @@ case class Cell(name: String, formulae: String) {
         }
       } else if (isCell(token)) {
           val (drow, dcol) = toRowColumnPair(token)
-          stack.push(model(drow)(dcol).evaluateValue)
+          stack.push(model(drow)(dcol).evaluate)
       }
       else
         stack.push(token.toDouble)
@@ -91,4 +101,16 @@ case class Cell(name: String, formulae: String) {
   }
 
   private var _value: Option[Double] = None
+
+  import scala.collection.mutable.ListBuffer
+  private var _neighbours: ListBuffer[Cell] = ListBuffer.empty[Cell]
+
+  def addNeighbour(cell: Cell):Unit = {
+    _neighbours += cell
+  }
+
+  def neighbours = _neighbours.toList
+
+  def hasNeighbours: Boolean = _neighbours.length > 0
+
 }
