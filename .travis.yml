@@ -1,3 +1,5 @@
+sudo: false
+
 language: scala
 
 scala:
@@ -6,3 +8,10 @@ scala:
 script:
    - sbt ++$TRAVIS_SCALA_VERSION clean test
 
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot/
+
+jdk:
+  - oraclejdk8
