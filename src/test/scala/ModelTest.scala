@@ -136,7 +136,7 @@ class ModelTest extends FlatSpec with Matchers {
     ))
   }
 
-  "Extremely large model" should "not throw stackoverflow for 100 thousand columns" in {
+  "Extremely large model" should "not throw stackoverflow for 10 thousand columns" in {
     val limit = 10000
     val cells = (1 until limit).foldRight(List(Cell(s"A$limit", "1")))((x, acc) => {
       Cell(s"A$x", s"A${x + 1}") :: acc
